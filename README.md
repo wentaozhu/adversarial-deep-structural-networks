@@ -22,4 +22,4 @@ The DDSM-BCRP dataset can be downloaded from https://drive.google.com/a/uci.edu/
 
 Please cite our paper as Zhu, Wentao, and Xiaohui Xie. "Adversarial deep structural networks for mammographic mass segmentation." arXiv preprint arXiv:1612.05970 (2016).
 
-If you have any problems, please contact with me wentaozhu1991@gmail.com.
+If you have any questions, please contact with me wentaozhu1991@gmail.com.
