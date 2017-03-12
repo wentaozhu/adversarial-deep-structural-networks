@@ -21,3 +21,5 @@ The inbreast dataset can be downloaded from https://drive.google.com/a/uci.edu/f
 The DDSM-BCRP dataset can be downloaded from https://drive.google.com/a/uci.edu/file/d/0B-7-8LLwONIZU0l2N3hXdU96Y2M/view?usp=sharing
 
 Please cite our paper as Zhu, Wentao, and Xiaohui Xie. "Adversarial deep structural networks for mammographic mass segmentation." arXiv preprint arXiv:1612.05970 (2016).
+
+If you have any problems, please contact with me wentaozhu1991@gmail.com.
