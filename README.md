@@ -2,15 +2,24 @@
 Adversarial Deep Structural Networks for Mammographic Mass Segmentation https://arxiv.org/abs/1612.05970
 
 crfcnn_combine.py is the executive file.
+
 modelname = 'cnn' #'crfcomb'
-'cnn' is for FCN model. 
-'cnnat' is for advesarial FCN model. 
-'crf' is for FCN-CRF model. 
-'crfat' is for adversarial FCN-CRF model. 
-'cnncomb' is for multi-FCN model.
-'cnncombat' is for adversarial multi-FCN model.
-'crfcomb' is for multi-FCN-CRF model.
-'crfcombat' is for adversarual multi-FCN-CRF model.
+
+modelname = 'cnn' #is for FCN model. 
+
+modelname = 'cnnat' #is for advesarial FCN model. 
+
+modelname = 'crf' #is for joint FCN-CRF model. 
+
+modelname = 'crfat' #is for adversarial FCN-CRF model. 
+
+modelname = 'cnncomb' #is for multi-FCN model.
+
+modelname = 'cnncombat' #is for adversarial multi-FCN model.
+
+modelname = 'crfcomb' #is for joint multi-FCN-CRF model.
+
+modelname = 'crfcombat' #is for adversarual multi-FCN-CRF model.
 
 crfcnn_combine_ddsm.py is the main file for ddsm.
 
