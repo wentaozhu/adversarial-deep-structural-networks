@@ -1,7 +1,7 @@
 # adversarial-deep-structural-networks
-Adversarial Deep Structural Networks for Mammographic Mass Segmentation https://arxiv.org/abs/1612.05970
+Adversarial Deep Structural Networks for Mammographic Mass Segmentation https://arxiv.org/abs/1612.05970 The overview is in isbi18_poster.pptx
 
-This is the first work formulating the adversarial example to improve segmentation. Three aspects to understand adversarial deep structure model 1) optimal regularization for local smoothness 2) optimal data augmentation 3) force the model learn well on the boundary area.
+This is the first work formulating the adversarial example to improve segmentation. Three aspects to understand adversarial deep structure model 1) optimal regularization for local smoothness 2) optimal data augmentation 3) force the model learn well on the boundary area. 
 
 crfcnn_combine.py is the executive file.
 
