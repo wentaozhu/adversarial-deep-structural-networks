@@ -1,24 +1,39 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import scipy
 import numpy as np 
 import scipy.io as sio
 import os
 import scipy.misc
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import utils_combine
 from utils_combine import fetchdatalabel, calfilter, init, initcomb, model, crfatmodel, cnnatmodel, meanstd, cnnmodel, dice
+import argparse
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-lr", "--learningrate", default=0.003, help="Learning Rate", type=float)
+parser.add_argument("-l2", "--l2factor", default=0.5, help="L2 Factor", type=float)
+parser.add_argument("-n", "--n_epoch", default=100, help="Number of epochs", type=int)
+parser.add_argument("-at", "--at_epsilon", default=1e-1, help="Epsilon for Adversarial Training", type=float)
+parser.add_argument("-md", "--modelname", default='cnn', help="Model Name")
+parser.add_argument("-norm", "--normalize", action="store_true", help="normalize the training data.")
+parser.add_argument("-deb", "--debug", action="store_true", help="Debug mode")
+
+
 rng = np.random.RandomState(1234)
 tf.set_random_seed(1)
-lrbig = 0.01 #0.01
+
+args = parser.parse_args()
+
+lrbig = 0.003 #0.01
 lrmid = 0.003 #5
-lr = 0.003 #2#5 #2 #3 #4 #3#5
+lr = args.learningrate #2#5 #2 #3 #4 #3#5
 lrsmall = 0.002
-l2factor =  0.5 #0.01 # 0.01
-totalepoch = 5000 #7000 #7000 #300 #200 #120
-atepsilon = 1e-1 #5e-1 #0 #-1
-modelname = 'cnn' #'crfcomb'
-debug = False #False
-savename = str(lr)+str(totalepoch)+str(atepsilon)+'2lrfsave'+str(5)+modelname+'norm' + 'valpara335'
+l2factor =  args.l2factor #0.01 # 0.01
+totalepoch = args.n_epoch #5000 #7000 #7000 #300 #200 #120
+atepsilon = args.at_epsilon #5e-1 #0 #-1
+modelname = args.modelname #'crfcomb'
+savename = str(lr)+'_'+str(totalepoch)+'_'+str(atepsilon)+'_2lrfsave_'+str(5)+'_' + modelname + ('_norm' if args.normalize else '') + '_valpara335'
 fusion=None #'late' #None #'late'
 saveperepoch = False #True #False #True #True # True
 savefreq = 10
@@ -28,16 +43,16 @@ boxwidth = 40
 batchsize = 29
 #thresh = 0.885
 postfix='roienhance.mat' # 'roienhance.mat' 'roienhance.jpeg'
-traindatapath = '../trainroi1dilbig/'
-trainlabelpath = '../trainroi1dilbig/'
-testdatapath = '../testroi1dilbig/'
-testlabelpath = '../testroi1dilbig/'
+traindatapath = '../inbreast/trainroi1dilbig/'
+trainlabelpath = '../inbreast/trainroi1dilbig/'
+testdatapath = '../inbreast/testroi1dilbig/'
+testlabelpath = '../inbreast/testroi1dilbig/'
 if __name__ == '__main__':
   assert(modelname!='crf' or modelname!='cnn' or modelname!='cnnat' or modelname!='crfat' 
   	or modelname!='cnncomb' or modelname!='crfcomb' or modelname!='cnncombat' or modelname!='crfcombat')
   traindata, trainlabel, trainfname = fetchdatalabel(path=traindatapath, postfix=postfix, flag='train')
   testdata, testlabel, testfname = fetchdatalabel(path=testdatapath, postfix=postfix, flag='test')
-  if savename[-4:] == 'norm':
+  if args.normalize:
     print('norm')
     meandata = traindata.mean(axis=0)
     stddata = traindata.std(axis=0)
@@ -91,17 +106,21 @@ if __name__ == '__main__':
   grads = tf.gradients(trainenergy, params, aggregation_method=2)
   optimizer = opt.apply_gradients(zip(grads, params))
   #optimizer = tf.train.AdamOptimizer(learning_rate=learningrate).minimize(trainenergy)
-  init = tf.initialize_all_variables()
+  init = tf.global_variables_initializer()
   saver = tf.train.Saver()
   gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.25)
+
   with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-  #with tf.Session() as sess:
     sess.run(init)
     tf.set_random_seed(1)
     trenerls, traccls, trdils, teenerls, teaccls, tedils = [], [], [], [], [], []
     besttrener, tolstep, besttedi, besttrdi = 1e6, 0, 0, 0
     predmat = {}
+
+    ### Epoch Looping Starts ###
     for epoch in range(0,totalepoch):
+      
+      """ Train Starts Here """
       randindex = np.random.permutation(batchsize*8)
       trainloss, trainacc, traindi, trainl2 = 0, 0, 0, 0
       for iindex in range(8):
@@ -110,46 +129,56 @@ if __name__ == '__main__':
         traindataii = traindata[randindexii, :, :]
         trainlabelii = trainlabel[randindexii, :, :] 
         #print(len(randindexii))
-        if modelname[:3] == 'cnn':
-          if not debug:
+        if modelname[:3] == 'cnn': # FCN without CRF
+          if not args.debug:
             energy, acc, dival, _ = sess.run([trainenergy, accuracy, di, optimizer], feed_dict={X: traindataii,
                                          Y: trainlabelii, learningrate: lr})
-          if debug and modelname[-2:] == 'at':
+          elif modelname[-2:] == 'at':
           	energy, acc, dival, adv, _ = sess.run([trainenergy, accuracy, di, advloss, optimizer], feed_dict={X: traindataii,
                                          Y: trainlabelii, learningrate: lr})
           	print(adv)
-        else:
+        elif modelname[:3] == 'crf':  # FCN with CRF
           traink1ii = traink1[randindexii, :, :]
           traink2ii = traink2[randindexii, :, :]  
-          if not debug:
+          if not args.debug:
             energy, acc, dival, l2val, _ = sess.run([trainenergy, accuracy, di, l2loss, optimizer], feed_dict={X: traindataii,
                                          Y: trainlabelii, learningrate: lrbig, k1: traink1ii, k2: traink2ii})
-          if debug and modelname[-2:] == 'at':
+          elif modelname[-2:] == 'at':
           	energy, acc, dival, l2val, adv,_ = sess.run([trainenergy, accuracy, di, l2loss, advloss, optimizer], feed_dict={X: traindataii,
                                          Y: trainlabelii, learningrate: lrbig, k1: traink1ii, k2: traink2ii})
           	print(adv)
           trainl2 += l2val
+        else:
+          print("Invalid model name")
+          exit(1)
         traindi += dival
         trainloss += energy
         trainacc += acc
-      print('epoch'+str(epoch)+', '+str(trainloss/8)+' '+str(trainl2/84)+' '+str(trainacc/8)+' '+str(traindi/8))
+        print(acc)
+      print('epoch'+str(epoch)+', train-loss: '+str(trainloss/8)+' train-l2-penalty: '+str(trainl2/84)+' train-accuracy: '+str(trainacc/8)+' train-dice: '+str(traindi/8))
       #if trainloss/4 < besttrainloss:
       #  besttrainloss = trainloss/4
       #  tolstep = 0
       #else: tolstep += 1 
       #if tolstep == 8: lr *= .99
+      """ Train Ends Here """
+
+      """ Test Starts Here """
       for iindex in range(2):
         testdataii = testdata[iindex*batchsize:(iindex+1)*batchsize, :, :]
         testlabelii = testlabel[iindex*batchsize:(iindex+1)*batchsize, :, :]   
-        if modelname[:3] == 'cnn':
+        if modelname[:3] == 'cnn':  # FCN without CRF
           #print(testlabelii.shape, type(testlabelii))
           energy, acc, dival, qtestval = sess.run([testenergy, accuracy, di, qtest], feed_dict={X: testdataii,
             Y: testlabelii, learningrate: 0})
-        else:
+        elif modelname[:3] == 'crf':   # FCN with CRF
           testk1ii = testk1[iindex*batchsize:(iindex+1)*batchsize, :, :]       
           testk2ii = testk2[iindex*batchsize:(iindex+1)*batchsize, :, :]
           energy, acc, dival, qtestval = sess.run([testenergy, accuracy, di, qtest], feed_dict={X: testdataii,
                             Y: testlabelii, learningrate: 0, k1: testk1ii, k2: testk2ii})
+        else:
+          print("Invalid model name detected in testing")
+          exit(1)
         if iindex == 0:
           testenergyval, testacc, testpred = energy, acc, qtestval
         else:
@@ -157,8 +186,11 @@ if __name__ == '__main__':
           testacc += acc
           testpred = np.concatenate((testpred, qtestval), axis=0)
       testdi = dice(testlabel[:], (testpred.argmax(3))[:])
+      print('epoch'+str(epoch)+', test energy: '+str(testenergyval/2)+' test accuracy: '+str(testacc/2)+' test dice: '+str(testdi))
+      """ Test Ends Here """
+
       if saveperepoch and (epoch%savefreq==0): #(totalepoch<200 or testdi>thresh):  # because of model size, save the result and tune further
-      	for iindex in range(8):
+        for iindex in range(8):
           traindataii = traindata[iindex*batchsize:(iindex+1)*batchsize, :, :]
           trainlabelii = trainlabel[iindex*batchsize:(iindex+1)*batchsize, :, :]   
           if modelname[:3] == 'cnn':
@@ -179,7 +211,7 @@ if __name__ == '__main__':
         savemat['trainpred'] = trainpred
         #savemat['trainlabel'] = trainlabel
         sio.savemat(savename+str(epoch)+'.mat', savemat)
-      print('epoch'+str(epoch)+', '+str(testenergyval/2)+' '+str(testacc/2)+' '+str(testdi))
+
       if testdi > besttedi:
         saver.save(sess, savename+'.ckpt')
         besttedi = testdi
@@ -197,7 +229,10 @@ if __name__ == '__main__':
       teenerls.append(testenergyval/8)
       teaccls.append(testacc/8)
       tedils.append(testdi)
+    ### Epoch Looping Ends ###
     print(str(besttedi)+' '+str(max(trdils)))
+
+    ### Save .mat File ###
     saver.restore(sess, savename+'.ckpt')
     #argpred, dival = sess.run([predarg, di], feed_dict={X: testdata,
     #                                Y: testlabel, learningrate: 0})#, k1: testk1, k2: testk2})
@@ -232,12 +267,20 @@ if __name__ == '__main__':
     predmat['trainpred'] = trainpred
     print(savename+'.mat', str(max(tedils)))
     sio.savemat(savename+'.mat', predmat)
+    ### End Saving .mat File###
+
+
+    ### Plot ###
     plt.figure(1)
     t = np.arange(0, totalepoch, 1)
-    plt.subplot(311)
-    plt.plot(t, trenerls, 'r', t, teenerls, 'b')
-    plt.subplot(312)
-    plt.plot(t, traccls, 'r', t, teaccls, 'b')
-    plt.subplot(313)
-    plt.plot(t, trdils, 'r', t, tedils, 'b')
+    sub1 = plt.subplot(311)
+    sub1.set_title('Train Energy')
+    sub1.plot(t, trenerls, 'r', t, teenerls, 'b')
+    sub2 = plt.subplot(312)
+    sub2.set_title('Train Accuracy')
+    sub2.plot(t, traccls, 'r', t, teaccls, 'b')
+    sub3 = plt.subplot(313)
+    sub3.set_title('Train Dice Score')
+    sub3.plot(t, trdils, 'r', t, tedils, 'b')
     plt.savefig(savename+'.png')
+    ### End Plot ###

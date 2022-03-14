@@ -5,7 +5,7 @@ import scipy.io as sio
 import os
 import scipy.misc
 rng = np.random.RandomState(1234)
-tf.set_random_seed(1)
+tf.random.set_seed(1)
 boxheight = 40
 boxwidth = 40
 batchsize = 29
@@ -63,9 +63,9 @@ def dice(label, pred):
   return 2*TP*1. / (FP+FN+2*TP)
 
 def dice_tf(label, pred):
-  TP = tf.reduce_sum(tf.mul(pred, label))
-  FP = tf.reduce_sum(tf.mul(pred, 1-label))
-  FN = tf.reduce_sum(tf.mul(1-pred, label))
+  TP = tf.reduce_sum(tf.multiply(pred, label))
+  FP = tf.reduce_sum(tf.multiply(pred, 1-label))
+  FN = tf.reduce_sum(tf.multiply(1-pred, label))
   return tf.truediv(2*TP,  FP+FN+2*TP)
 
 def convlayer(x, w, b, flag='stride'):
@@ -90,7 +90,7 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
   else:
     ux = tf.reshape(ux, [-1, boxheight, boxwidth, 8])
     wunary = tf.reshape(wunary, [8,])
-    h = tf.mul(ux, wunary)
+    h = tf.multiply(ux, wunary)
     h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
     hsum = tf.reduce_sum(h, reduction_indices=3)
     hconv4bias = tf.reshape(hsum, [-1,2])
@@ -100,11 +100,11 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     #e_x = tf.exp(hsum - tf.reduce_max(hsum, reduction_indices=2, keep_dims=True))
   #q = e_x #/ (tf.clip_by_value(tf.reduce_sum(e_x, reduction_indices=2, keep_dims=True), 1e-6,1.))  # batchsize*(boxheight*boxwidth)*2
   k1 = tf.reshape(k1, [-1, boxheight*boxwidth, boxheight*boxwidth, 1])
-  k1 = tf.concat(3, [k1, k1])
+  k1 = tf.concat([k1, k1], 3)
   k2 = tf.reshape(k2, [-1, boxheight*boxwidth, boxheight*boxwidth, 1])
-  k2 = tf.concat(3, [k2, k2])
-  wsmooth = tf.diag(tf.squeeze(wsmooth))
-  wcontra = tf.diag(tf.squeeze(wcontra))
+  k2 = tf.concat([k2, k2], 3)
+  wsmooth = tf.linalg.diag(tf.squeeze(wsmooth))
+  wcontra = tf.linalg.diag(tf.squeeze(wcontra))
   #wsmoothaug = tf.reshape(wsmooth, [1,1,2])
   #wsmoothaug = tf.tile(wsmoothaug, [batchsize, boxheight*boxwidth, 1])
   #wcontraaug = tf.reshape(wcontra, [1,1,2])
@@ -112,8 +112,8 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
   for epoch in range(testiter):
     q = tf.reshape(q, [-1, boxheight*boxwidth, 1, 2]) 
     q = tf.tile(q, [1,1,boxheight*boxwidth,1])
-    q1 = tf.reduce_sum(tf.mul(k1, q), reduction_indices=2)  # for pairwise potential 1, batchsize*(boxheight*boxwidth)*2
-    q2 = tf.reduce_sum(tf.mul(k2, q), reduction_indices=2)  # for pairwise potential 2, batchsize*(boxheight*boxwidth)*2
+    q1 = tf.reduce_sum(tf.multiply(k1, q), axis=2)  # for pairwise potential 1, batchsize*(boxheight*boxwidth)*2
+    q2 = tf.reduce_sum(tf.multiply(k2, q), axis=2)  # for pairwise potential 2, batchsize*(boxheight*boxwidth)*2
     q1 = tf.reshape(q1, [-1,2])
     q2 = tf.reshape(q2, [-1,2])
     #qpre = tf.mul(wsmoothaug, q1) + tf.mul(wcontraaug, q2)
@@ -126,7 +126,7 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     else:
       ux = tf.reshape(ux, [-1, boxheight, boxwidth,8])
       #wunary = tf.reshape(wunary, [8,])
-      h = tf.mul(ux, wunary)
+      h = tf.multiply(ux, wunary)
       h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
       hsum = tf.reduce_sum(h, reduction_indices=3)
       qu = hsum - qhat
@@ -164,16 +164,16 @@ def calfilter(X):
   return k1, k2
 
 def init(nhid1=6, nhid2=12, nhid3=588, lrf1=5, lrf2=5, lrf3=7):  #nhid1=6, nhid2=12, nhid3=588, lrf1=5, lrf2=5, lrf3=7
-  paras = {'wconv1': tf.Variable(tf.random_normal([lrf1, lrf1, 1, nhid1])),
-           'wconv2': tf.Variable(tf.random_normal([lrf2, lrf2, nhid1, nhid2])),
-           'wconv3': tf.Variable(tf.random_normal([lrf3, lrf3, nhid2, nhid3])),
-           'wconv4': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid3])),
-           'bconv1': tf.Variable(tf.random_normal([nhid1])),
-           'bconv2': tf.Variable(tf.random_normal([nhid2])),
-           'bconv3': tf.Variable(tf.random_normal([nhid3])),
-           'bconv4': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wsmooth': tf.Variable(tf.random_normal([2,1])),
-           'wcontra': tf.Variable(tf.random_normal([2,1]))}
+  paras = {'wconv1': tf.Variable(tf.random.normal([lrf1, lrf1, 1, nhid1])),
+           'wconv2': tf.Variable(tf.random.normal([lrf2, lrf2, nhid1, nhid2])),
+           'wconv3': tf.Variable(tf.random.normal([lrf3, lrf3, nhid2, nhid3])),
+           'wconv4': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid3])),
+           'bconv1': tf.Variable(tf.random.normal([nhid1])),
+           'bconv2': tf.Variable(tf.random.normal([nhid2])),
+           'bconv3': tf.Variable(tf.random.normal([nhid3])),
+           'bconv4': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wsmooth': tf.Variable(tf.random.normal([2,1])),
+           'wcontra': tf.Variable(tf.random.normal([2,1]))}
   return paras
 def initcomb(nhid221=37, nhid222=12, nhid223=355, lrf221=2, lrf222=2, lrf223=9,
       nhid331=16, nhid332=13, nhid333=415, lrf331=3, lrf332=3, lrf333=8,
@@ -249,27 +249,27 @@ def cnnmodel(X, Y, paras, flag='single'):
   assert(flag=='single' or flag=='combine')
   X = tf.reshape(X, shape=[-1, boxheight, boxwidth, 1])
   yreshape = tf.reshape(Y, [-1, boxheight, boxwidth, 1])
-  yonehot = tf.concat(3, [1-yreshape, yreshape])
+  yonehot = tf.concat([1-yreshape, yreshape], 3)
   if flag == 'combine':
     hconv4clip = buildcombmodel(X, paras)
   else: hconv4clip = buildmodel(X, paras)
   #hconv4log = -tf.log(hconv4clip)
   #q_train, q_test = crfrnn(hconv4log, paras['wsmooth'], paras['wcontra'], k1, k2, trainiter=5, testiter=10)
   #q_train = tf.reshape(q_train, [-1, boxheight, boxwidth, 2])
-  q_train = -tf.log(hconv4clip)
-  trainenergy = tf.reduce_sum((q_train)*yonehot, reduction_indices=3)
+  q_train = -tf.math.log(hconv4clip)
+  trainenergy = tf.reduce_sum((q_train)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
   trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
   q_test = hconv4clip
   #q_test = crfrnn(hconv4, paras['wsmooth'], paras['wcontra'], k1, k2, iter=5)
   q_test = tf.reshape(q_test, [-1, boxheight, boxwidth, 2])
-  testenergy = tf.reduce_sum(tf.mul(q_test, yonehot), reduction_indices=3)
+  testenergy = tf.reduce_sum(tf.multiply(q_test, yonehot), axis=3)
   #testenergy = tf.reduce_prod(testenergy, reduction_indices=[1,2])
   testenergy = tf.reduce_mean(testenergy, [0,1,2])
   predarg = tf.argmax(q_test, 3)
-  yint64 = tf.to_int64(Y)
+  yint64 = tf.cast(Y, tf.int64)
   acc = tf.equal(yint64, predarg)
-  acc = tf.to_float(acc)
+  acc = tf.cast(acc, tf.float32)
   accuracy = tf.reduce_mean(acc, [0,1,2])
   di = dice_tf(tf.reshape(yint64, [-1,]), tf.reshape(predarg, [-1,]))
   return trainenergy, accuracy, di, testenergy, q_test
@@ -278,7 +278,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   assert(flag=='single' or flag=='combine')
   X = tf.reshape(X, shape=[-1, boxheight, boxwidth, 1])
   yreshape = tf.reshape(Y, [-1, boxheight, boxwidth, 1])
-  yonehot = tf.concat(3, [1-yreshape, yreshape])
+  yonehot = tf.concat([1-yreshape, yreshape], 3)
   if flag == 'combine':
     hconv4clip = buildcombmodel(X, paras, fusion=False)
     if fusion=='late':
@@ -298,7 +298,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
       q_trainconc = tf.concat(3, [q_train22, q_train33, q_train44, q_train55])
       q_trainconc = tf.reshape(q_trainconc, [-1,boxheight,boxwidth,8])
       w_unary = tf.reshape(paras['wunary'], [8])
-      q_trainw = tf.mul(q_trainconc, w_unary)
+      q_trainw = tf.multiply(q_trainconc, w_unary)
       q_trainw = tf.reshape(q_trainw, [-1,boxheight,boxwidth,4,2])
       q_trainsum = tf.reduce_sum(q_trainw, 3)
       q_trainsum = tf.reshape(q_trainsum, [-1,2])
@@ -312,7 +312,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
       q_test55 = tf.reshape(q_test55, [-1,boxheight,boxwidth,1,2])
       q_testconc = tf.concat(3, [q_test22, q_test33, q_test44, q_test55])
       q_testconc = tf.reshape(q_testconc, [-1,boxheight,boxwidth,8])
-      q_testw = tf.mul(q_testconc, w_unary)
+      q_testw = tf.multiply(q_testconc, w_unary)
       q_testw = tf.reshape(q_testw, [-1,boxheight,boxwidth,4,2])
       q_testsum = tf.reduce_sum(q_testw, 3)
       q_testsum = tf.reshape(q_testsum, [-1,2])
@@ -330,20 +330,20 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   #q_train = tf.reshape(q_train, [-1, boxheight, boxwidth, 2])
   #q_train = -tf.log(hconv4clip)
   q_trainclip = tf.clip_by_value(q_train, 1e-6, 1.)
-  trainenergy = tf.reduce_sum(-tf.log(q_trainclip)*yonehot, reduction_indices=3)
+  trainenergy = tf.reduce_sum(-tf.math.log(q_trainclip)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
   trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
   
   #q_test = hconv4clip
   #q_test = crfrnn(hconv4, paras['wsmooth'], paras['wcontra'], k1, k2, iter=5)
   q_test = tf.reshape(q_test, [-1, boxheight, boxwidth, 2])
-  testenergy = tf.reduce_sum(tf.mul(q_test, yonehot), reduction_indices=3)
+  testenergy = tf.reduce_sum(tf.multiply(q_test, yonehot), axis=3)
   #testenergy = tf.reduce_prod(testenergy, reduction_indices=[1,2])
   testenergy = tf.reduce_mean(testenergy, [0,1,2])
   predarg = tf.argmax(q_test, 3)
-  yint64 = tf.to_int64(Y)
+  yint64 = tf.cast(Y, tf.int64)
   acc = tf.equal(yint64, predarg)
-  acc = tf.to_float(acc)
+  acc = tf.cast(acc, tf.int32)
   accuracy = tf.reduce_mean(acc, [0,1,2])
   di = dice_tf(tf.reshape(yint64, [-1,]), tf.reshape(predarg, [-1,]))
   return trainenergy, accuracy, di, testenergy, q_test
@@ -352,8 +352,8 @@ def crfatmodel(X, Y, k1, k2, paras, epsilon, flag='single', fusion=None):
   assert(flag=='single' or flag=='combine')
   energy, accuracy, di, testenergy, qtest = model(X, Y, k1, k2, paras, flag, fusion=fusion)
   gradx = tf.stop_gradient(tf.gradients(energy, X, aggregation_method=2))
-  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), reduction_indices=[1,2], keep_dims=True))
-  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, reduction_indices=[1,2], keep_dims=True))
+  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), axis=[1,2], keepdims=True))
+  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, axis=[1,2], keepdims=True))
   radv = epsilon * gradx
   advenergy, _, _, _, _ = model(X+radv, Y, k1, k2, paras, flag)
   energy = energy + advenergy
@@ -363,8 +363,8 @@ def cnnatmodel(X, Y, paras, epsilon, flag='single'):
   assert(flag=='single' or flag=='combine')
   energy, accuracy, di, testenergy, qtest = cnnmodel(X, Y, paras, flag=flag)
   gradx = tf.stop_gradient(tf.gradients(energy, X, aggregation_method=2))
-  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), reduction_indices=[1,2], keep_dims=True))
-  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, reduction_indices=[1,2], keep_dims=True))
+  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), axis=[1,2], keepdims=True))
+  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, axis=[1,2], keepdims=True))
   radv = epsilon * gradx
   advenergy, _, _, _, _ = cnnmodel(X+radv, Y, paras, flag)
   energy = energy + advenergy
@@ -437,7 +437,7 @@ def buildcombmodel(X, paras, fusion=True):
     wunary = tf.reshape(paras['wunary'], [8,])
     h = hconc * wunary
     h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-    hsum = tf.reduce_sum(h, reduction_indices=3)
+    hsum = tf.reduce_sum(h, axis=3)
     hsum = tf.reshape(hsum, [-1,2])
     hsumsoft = tf.nn.softmax(hsum)
     hsumclip = tf.clip_by_value(hsumsoft, 1e-6, 1.)
