@@ -90,7 +90,7 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     wunary = tf.reshape(wunary, [8,])
     h = tf.multiply(ux, wunary)
     h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-    hsum = tf.reduce_sum(h, reduction_indices=3)
+    hsum = tf.reduce_sum(h, axis=3)
     hconv4bias = tf.reshape(hsum, [-1,2])
     hconv4soft = tf.nn.softmax(hconv4bias)
     hconv4clip = tf.clip_by_value(hconv4soft, 1e-6, 1.)
@@ -126,7 +126,7 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
       #wunary = tf.reshape(wunary, [8,])
       h = tf.multiply(ux, wunary)
       h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-      hsum = tf.reduce_sum(h, reduction_indices=3)
+      hsum = tf.reduce_sum(h, axis=3)
       qu = hsum - qhat
     #e_xx = tf.exp(qu - tf.reduce_max(qu, reduction_indices=2, keep_dims=True))
     #q = e_xx / (tf.clip_by_value(tf.reduce_sum(e_xx, reduction_indices=2, keep_dims=True), 1e-6, 1.))
@@ -342,7 +342,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   predarg = tf.argmax(q_test, 3)
   yint64 = tf.cast(Y, tf.int64)
   acc = tf.math.equal(yint64, predarg)
-  acc = tf.cast(acc, tf.int32)
+  acc = tf.cast(acc, tf.float32)
   accuracy = tf.reduce_mean(acc, [0,1,2])
   di = dice_tf(tf.reshape(yint64, [-1,]), tf.reshape(predarg, [-1,]))
   return trainenergy, accuracy, di, testenergy, q_test
