@@ -321,7 +321,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
     else:
       q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
         trainiter=5, testiter=10, wunary=paras['wunary'])
-  else: 
+  else:
     hconv4clip = buildmodel(X, paras)
     q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
       trainiter=5, testiter=10)
@@ -341,7 +341,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   testenergy = tf.reduce_mean(testenergy, [0,1,2])
   predarg = tf.argmax(q_test, 3)
   yint64 = tf.cast(Y, tf.int64)
-  acc = tf.equal(yint64, predarg)
+  acc = tf.math.equal(yint64, predarg)
   acc = tf.cast(acc, tf.int32)
   accuracy = tf.reduce_mean(acc, [0,1,2])
   di = dice_tf(tf.reshape(yint64, [-1,]), tf.reshape(predarg, [-1,]))
