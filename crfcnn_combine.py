@@ -154,7 +154,7 @@ if __name__ == '__main__':
         traindi += dival
         trainloss += energy
         trainacc += acc
-        print(acc)
+        if args.debug: print(acc)
       print('epoch'+str(epoch)+', train-loss: '+str(trainloss/8)+' train-l2-penalty: '+str(trainl2/84)+' train-accuracy: '+str(trainacc/8)+' train-dice: '+str(traindi/8))
       #if trainloss/4 < besttrainloss:
       #  besttrainloss = trainloss/4
