@@ -169,12 +169,12 @@ if __name__ == '__main__':
         testlabelii = testlabel[iindex*batchsize:(iindex+1)*batchsize, :, :]   
         if modelname[:3] == 'cnn':  # FCN without CRF
           #print(testlabelii.shape, type(testlabelii))
-          energy, acc, dival, qtestval = sess.run([testenergy, accuracy, di, qtest], feed_dict={X: testdataii,
+          energy, acc, dival, qtestval = sess.run([trainenergy, accuracy, di, qtest], feed_dict={X: testdataii,
             Y: testlabelii, learningrate: 0})
         elif modelname[:3] == 'crf':   # FCN with CRF
           testk1ii = testk1[iindex*batchsize:(iindex+1)*batchsize, :, :]       
           testk2ii = testk2[iindex*batchsize:(iindex+1)*batchsize, :, :]
-          energy, acc, dival, qtestval = sess.run([testenergy, accuracy, di, qtest], feed_dict={X: testdataii,
+          energy, acc, dival, qtestval = sess.run([trainenergy, accuracy, di, qtest], feed_dict={X: testdataii,
                             Y: testlabelii, learningrate: 0, k1: testk1ii, k2: testk2ii})
         else:
           print("Invalid model name detected in testing")
