@@ -226,8 +226,8 @@ if __name__ == '__main__':
       trenerls.append(trainloss/8)
       traccls.append(trainacc/8)
       trdils.append(traindi/8)
-      teenerls.append(testenergyval/8)
-      teaccls.append(testacc/8)
+      teenerls.append(testenergyval/2)
+      teaccls.append(testacc/2)
       tedils.append(testdi)
     ### Epoch Looping Ends ###
     print(str(besttedi)+' '+str(max(trdils)))

@@ -255,7 +255,7 @@ def cnnmodel(X, Y, paras, flag='single'):
   #hconv4log = -tf.log(hconv4clip)
   #q_train, q_test = crfrnn(hconv4log, paras['wsmooth'], paras['wcontra'], k1, k2, trainiter=5, testiter=10)
   #q_train = tf.reshape(q_train, [-1, boxheight, boxwidth, 2])
-  q_train = tf.math.negative(tf.math.log(hconv4clip))
+  q_train = -tf.math.log(hconv4clip)
   trainenergy = tf.reduce_sum((q_train)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
   trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
@@ -329,7 +329,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   #q_train = tf.reshape(q_train, [-1, boxheight, boxwidth, 2])
   #q_train = -tf.log(hconv4clip)
   q_trainclip = tf.clip_by_value(q_train, 1e-6, 1.)
-  trainenergy = tf.reduce_sum(tf.math.negative(tf.math.log(q_trainclip)*yonehot), axis=3)
+  trainenergy = tf.reduce_sum(-tf.math.log(q_trainclip)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
   trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
   
