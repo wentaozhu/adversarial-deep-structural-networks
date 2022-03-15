@@ -70,13 +70,11 @@ def dice_tf(label, pred):
 
 def convlayer(x, w, b, flag='stride'):
   assert(flag=='stride' or flag=='maxpool')
-  strides = [1,1,1,1]
-  if flag == 'stride':
-    strides = [1,2,2,1]
+  strides = [1,2,2,1] if flag == 'stride' else [1,1,1,1]
   hconv1 = tf.nn.conv2d(x, w, strides=strides, padding='VALID')
-  hconv1bias = tf.nn.bias_add(hconv1, b)
-  hconv1tan = tf.nn.tanh(hconv1bias)
   if flag == 'maxpool':
+    hconv1bias = tf.nn.bias_add(hconv1, b)
+    hconv1tan = tf.nn.tanh(hconv1bias)
     hconv1pool = tf.nn.max_pool(hconv1tan, ksize=[1,2,2,1], strides=[1,2,2,1], padding='VALID')
     return hconv1pool
   return hconv1
@@ -230,6 +228,7 @@ def buildmodel(X, paras):
   hconv1 = convlayer(X, paras['wconv1'], paras['bconv1'], flag='maxpool')
   hconv2 = convlayer(hconv1, paras['wconv2'], paras['bconv2'], flag='maxpool')
   
+  # conv3 has no pooling, so it didn't use convlayer
   hconv3 = tf.nn.conv2d(hconv2, paras['wconv3'], strides=[1,1,1,1], padding='VALID')
   hconv3bias = tf.nn.bias_add(hconv3, paras['bconv3'])
   hconv3tan = tf.nn.tanh(hconv3bias)
