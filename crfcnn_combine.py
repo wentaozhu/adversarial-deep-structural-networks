@@ -274,13 +274,16 @@ if __name__ == '__main__':
     plt.figure(1)
     t = np.arange(0, totalepoch, 1)
     sub1 = plt.subplot(311)
-    sub1.set_title('Train Energy')
+    sub1.set_title('Energy')
     sub1.plot(t, trenerls, 'r', t, teenerls, 'b')
     sub2 = plt.subplot(312)
-    sub2.set_title('Train Accuracy')
+    sub2.set_title('Accuracy')
     sub2.plot(t, traccls, 'r', t, teaccls, 'b')
     sub3 = plt.subplot(313)
-    sub3.set_title('Train Dice Score')
+    sub3.set_title('Dice Score')
     sub3.plot(t, trdils, 'r', t, tedils, 'b')
+    from matplotlib.patches import Patch
+    legends = [Patch(facecolor='r', label='Train'), Patch(facecolor='b', label='Test')]
+    plt.legend(handles=legends)
     plt.savefig(savename+'.png')
     ### End Plot ###
