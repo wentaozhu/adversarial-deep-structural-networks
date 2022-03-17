@@ -120,14 +120,14 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     qhat = tf.matmul(qpre, tf.constant(np.array([[0,1],[1,0]]).astype('float32')))
     qhat = tf.reshape(qhat, [-1, boxheight, boxwidth, 2])
     if wunary is None:
-      qu = - ux - qhat
+      qu = tf.math.log(ux)-qhat
     else:
       ux = tf.reshape(ux, [-1, boxheight, boxwidth,8])
       #wunary = tf.reshape(wunary, [8,])
       h = tf.multiply(ux, wunary)
       h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
       hsum = tf.reduce_sum(h, axis=3)
-      qu = hsum - qhat
+      qu = tf.math.log(hsum) - qhat
     #e_xx = tf.exp(qu - tf.reduce_max(qu, reduction_indices=2, keep_dims=True))
     #q = e_xx / (tf.clip_by_value(tf.reduce_sum(e_xx, reduction_indices=2, keep_dims=True), 1e-6, 1.))
     qubias = tf.reshape(qu, [-1,2])
@@ -322,7 +322,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
       q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
         trainiter=5, testiter=10, wunary=paras['wunary'])
   else:
-    hconv4clip = buildmodel(X, paras)
+    hconv4clip = buildmodel(X, paras) # the result after softmax activation from CNN feature map. No exp(-x) is used
     q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
       trainiter=5, testiter=10)
   #hconv4log = -tf.log(hconv4clip)
