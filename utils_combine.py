@@ -120,7 +120,7 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     qhat = tf.matmul(qpre, tf.constant(np.array([[0,1],[1,0]]).astype('float32')))
     qhat = tf.reshape(qhat, [-1, boxheight, boxwidth, 2])
     if wunary is None:
-      qu = ux - qhat
+      qu = - ux - qhat
     else:
       ux = tf.reshape(ux, [-1, boxheight, boxwidth,8])
       #wunary = tf.reshape(wunary, [8,])
@@ -248,7 +248,7 @@ def cnnmodel(X, Y, paras, flag='single'):
   assert(flag=='single' or flag=='combine')
   X = tf.reshape(X, shape=[-1, boxheight, boxwidth, 1])
   yreshape = tf.reshape(Y, [-1, boxheight, boxwidth, 1])
-  yonehot = tf.concat([1-yreshape, yreshape], 3)
+  yonehot = tf.concat([1-yreshape, yreshape], 3)  # (comment by Yan) Probably the prior, but not averaged among all images yet
   if flag == 'combine':
     hconv4clip = buildcombmodel(X, paras)
   else: hconv4clip = buildmodel(X, paras)
@@ -258,7 +258,7 @@ def cnnmodel(X, Y, paras, flag='single'):
   q_train = -tf.math.log(hconv4clip)
   trainenergy = tf.reduce_sum((q_train)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
-  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
+  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])  # (comment by Yan) Averaged to get the prior??
   q_test = hconv4clip
   #q_test = crfrnn(hconv4, paras['wsmooth'], paras['wcontra'], k1, k2, iter=5)
   q_test = tf.reshape(q_test, [-1, boxheight, boxwidth, 2])
@@ -277,7 +277,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   assert(flag=='single' or flag=='combine')
   X = tf.reshape(X, shape=[-1, boxheight, boxwidth, 1])
   yreshape = tf.reshape(Y, [-1, boxheight, boxwidth, 1])
-  yonehot = tf.concat([1-yreshape, yreshape], 3)
+  yonehot = tf.concat([1-yreshape, yreshape], 3)    # (comment by Yan) Probably the prior, but not averaged among all images yet
   if flag == 'combine':
     hconv4clip = buildcombmodel(X, paras, fusion=False)
     if fusion=='late':
@@ -331,7 +331,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   q_trainclip = tf.clip_by_value(q_train, 1e-6, 1.)
   trainenergy = tf.reduce_sum(-tf.math.log(q_trainclip)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
-  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
+  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])   # (comment by Yan) Averaged to get the prior??
   
   #q_test = hconv4clip
   #q_test = crfrnn(hconv4, paras['wsmooth'], paras['wcontra'], k1, k2, iter=5)
