@@ -177,51 +177,51 @@ def initcomb(nhid221=37, nhid222=12, nhid223=355, lrf221=2, lrf222=2, lrf223=9,
       nhid331=16, nhid332=13, nhid333=415, lrf331=3, lrf332=3, lrf333=8,
       nhid441=9, nhid442=12, nhid443=588, lrf441=4, lrf442=4, lrf443=7,
       nhid551=6, nhid552=12, nhid553=588, lrf551=5, lrf552=5, lrf553=7, fusion=None):
-  paras = {'wconv221': tf.Variable(tf.random_normal([lrf221, lrf221, 1, nhid221])),
-           'wconv222': tf.Variable(tf.random_normal([lrf222, lrf222, nhid221, nhid222])),
-           'wconv223': tf.Variable(tf.random_normal([lrf223, lrf223, nhid222, nhid223])),
-           'wconv224': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid223])),
-           'bconv221': tf.Variable(tf.random_normal([nhid221])),
-           'bconv222': tf.Variable(tf.random_normal([nhid222])),
-           'bconv223': tf.Variable(tf.random_normal([nhid223])),
-           'bconv224': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wconv331': tf.Variable(tf.random_normal([lrf331, lrf331, 1, nhid331])),
-           'wconv332': tf.Variable(tf.random_normal([lrf332, lrf332, nhid331, nhid332])),
-           'wconv333': tf.Variable(tf.random_normal([lrf333, lrf333, nhid332, nhid333])),
-           'wconv334': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid333])),
-           'bconv331': tf.Variable(tf.random_normal([nhid331])),
-           'bconv332': tf.Variable(tf.random_normal([nhid332])),
-           'bconv333': tf.Variable(tf.random_normal([nhid333])),
-           'bconv334': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wconv441': tf.Variable(tf.random_normal([lrf441, lrf441, 1, nhid441])),
-           'wconv442': tf.Variable(tf.random_normal([lrf442, lrf442, nhid441, nhid442])),
-           'wconv443': tf.Variable(tf.random_normal([lrf443, lrf443, nhid442, nhid443])),
-           'wconv444': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid443])),
-           'bconv441': tf.Variable(tf.random_normal([nhid441])),
-           'bconv442': tf.Variable(tf.random_normal([nhid442])),
-           'bconv443': tf.Variable(tf.random_normal([nhid443])),
-           'bconv444': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wconv551': tf.Variable(tf.random_normal([lrf551, lrf551, 1, nhid551])),
-           'wconv552': tf.Variable(tf.random_normal([lrf552, lrf552, nhid551, nhid552])),
-           'wconv553': tf.Variable(tf.random_normal([lrf553, lrf553, nhid552, nhid553])),
-           'wconv554': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid553])),
-           'bconv551': tf.Variable(tf.random_normal([nhid551])),
-           'bconv552': tf.Variable(tf.random_normal([nhid552])),
-           'bconv553': tf.Variable(tf.random_normal([nhid553])),
-           'bconv554': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wunary': tf.Variable(tf.random_normal([4,2]))}
+  paras = {'wconv221': tf.Variable(tf.random.normal([lrf221, lrf221, 1, nhid221])),
+           'wconv222': tf.Variable(tf.random.normal([lrf222, lrf222, nhid221, nhid222])),
+           'wconv223': tf.Variable(tf.random.normal([lrf223, lrf223, nhid222, nhid223])),
+           'wconv224': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid223])),
+           'bconv221': tf.Variable(tf.random.normal([nhid221])),
+           'bconv222': tf.Variable(tf.random.normal([nhid222])),
+           'bconv223': tf.Variable(tf.random.normal([nhid223])),
+           'bconv224': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wconv331': tf.Variable(tf.random.normal([lrf331, lrf331, 1, nhid331])),
+           'wconv332': tf.Variable(tf.random.normal([lrf332, lrf332, nhid331, nhid332])),
+           'wconv333': tf.Variable(tf.random.normal([lrf333, lrf333, nhid332, nhid333])),
+           'wconv334': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid333])),
+           'bconv331': tf.Variable(tf.random.normal([nhid331])),
+           'bconv332': tf.Variable(tf.random.normal([nhid332])),
+           'bconv333': tf.Variable(tf.random.normal([nhid333])),
+           'bconv334': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wconv441': tf.Variable(tf.random.normal([lrf441, lrf441, 1, nhid441])),
+           'wconv442': tf.Variable(tf.random.normal([lrf442, lrf442, nhid441, nhid442])),
+           'wconv443': tf.Variable(tf.random.normal([lrf443, lrf443, nhid442, nhid443])),
+           'wconv444': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid443])),
+           'bconv441': tf.Variable(tf.random.normal([nhid441])),
+           'bconv442': tf.Variable(tf.random.normal([nhid442])),
+           'bconv443': tf.Variable(tf.random.normal([nhid443])),
+           'bconv444': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wconv551': tf.Variable(tf.random.normal([lrf551, lrf551, 1, nhid551])),
+           'wconv552': tf.Variable(tf.random.normal([lrf552, lrf552, nhid551, nhid552])),
+           'wconv553': tf.Variable(tf.random.normal([lrf553, lrf553, nhid552, nhid553])),
+           'wconv554': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid553])),
+           'bconv551': tf.Variable(tf.random.normal([nhid551])),
+           'bconv552': tf.Variable(tf.random.normal([nhid552])),
+           'bconv553': tf.Variable(tf.random.normal([nhid553])),
+           'bconv554': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wunary': tf.Variable(tf.random.normal([4,2]))}
   if fusion=='late':
-    paras['wsmooth22'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra22'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wsmooth33'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra33'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wsmooth44'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra44'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wsmooth55'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra55'] = tf.Variable(tf.random_normal([2,1]))
+    paras['wsmooth22'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra22'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wsmooth33'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra33'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wsmooth44'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra44'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wsmooth55'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra55'] = tf.Variable(tf.random.normal([2,1]))
   else:
-    paras['wsmooth'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra'] = tf.Variable(tf.random_normal([2,1]))
+    paras['wsmooth'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra'] = tf.Variable(tf.random.normal([2,1]))
   return paras
 
 def buildmodel(X, paras):
@@ -322,7 +322,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
       q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
         trainiter=5, testiter=10, wunary=paras['wunary'])
   else:
-    hconv4clip = buildmodel(X, paras) # the result after softmax activation from CNN feature map. No exp(-x) is used
+    hconv4clip = buildmodel(X, paras) # the result after softmax activation from CNN feature map. -log(hconv4clip) is required
     q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
       trainiter=5, testiter=10)
   #hconv4log = -tf.log(hconv4clip)
