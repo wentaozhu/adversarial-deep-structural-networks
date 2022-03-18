@@ -88,11 +88,11 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
   else:
     ux = tf.reshape(ux, [-1, boxheight, boxwidth, 8])
     wunary = tf.reshape(wunary, [8,])
-    h = tf.multiply(ux, wunary)
+    h = tf.multiply(-tf.math.log(ux), wunary)
     h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-    hsum = tf.reduce_sum(h, axis=3)
+    hsum = tf.reduce_sum(h, axis=3)  # got phi unary for multi-scale FCN till now
     hconv4bias = tf.reshape(hsum, [-1,2])
-    hconv4soft = tf.nn.softmax(hconv4bias)
+    hconv4soft = tf.nn.softmax(-hconv4bias)
     hconv4clip = tf.clip_by_value(hconv4soft, 1e-6, 1.)
     q = (tf.reshape(hconv4clip, [-1, boxheight, boxwidth, 2]))
     #e_x = tf.exp(hsum - tf.reduce_max(hsum, reduction_indices=2, keep_dims=True))
@@ -124,10 +124,10 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     else:
       ux = tf.reshape(ux, [-1, boxheight, boxwidth,8])
       #wunary = tf.reshape(wunary, [8,])
-      h = tf.multiply(ux, wunary)
+      h = tf.multiply(-tf.math.log(ux), wunary)
       h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-      hsum = tf.reduce_sum(h, axis=3)
-      qu = tf.math.log(hsum) - qhat
+      hsum = tf.reduce_sum(h, axis=3)  # got phi unary for multi-scale FCN till now
+      qu = -hsum - qhat
     #e_xx = tf.exp(qu - tf.reduce_max(qu, reduction_indices=2, keep_dims=True))
     #q = e_xx / (tf.clip_by_value(tf.reduce_sum(e_xx, reduction_indices=2, keep_dims=True), 1e-6, 1.))
     qubias = tf.reshape(qu, [-1,2])
