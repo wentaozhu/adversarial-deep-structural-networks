@@ -430,7 +430,7 @@ def buildcombmodel(X, paras, fusion=True):
   hconv554clip = tf.clip_by_value(hconv554soft, 1e-6, 1.)
   hconv554clip = (tf.reshape(hconv554clip, [-1, boxheight, boxwidth, 1, 2]))
 
-  hconc = tf.concat(3, [hconv224clip, hconv334clip, hconv444clip, hconv554clip])
+  hconc = tf.concat([hconv224clip, hconv334clip, hconv444clip, hconv554clip], 3)
   if fusion:
     hconc = tf.reshape(hconc, [-1, 8])
     wunary = tf.reshape(paras['wunary'], [8,])
