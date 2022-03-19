@@ -5,7 +5,7 @@ import scipy.io as sio
 import os
 import scipy.misc
 rng = np.random.RandomState(1234)
-tf.set_random_seed(1)
+tf.random.set_seed(1)
 boxheight = 40
 boxwidth = 40
 batchsize = 29
@@ -63,20 +63,18 @@ def dice(label, pred):
   return 2*TP*1. / (FP+FN+2*TP)
 
 def dice_tf(label, pred):
-  TP = tf.reduce_sum(tf.mul(pred, label))
-  FP = tf.reduce_sum(tf.mul(pred, 1-label))
-  FN = tf.reduce_sum(tf.mul(1-pred, label))
+  TP = tf.reduce_sum(tf.multiply(pred, label))
+  FP = tf.reduce_sum(tf.multiply(pred, 1-label))
+  FN = tf.reduce_sum(tf.multiply(1-pred, label))
   return tf.truediv(2*TP,  FP+FN+2*TP)
 
 def convlayer(x, w, b, flag='stride'):
   assert(flag=='stride' or flag=='maxpool')
-  strides = [1,1,1,1]
-  if flag == 'stride':
-    strides = [1,2,2,1]
+  strides = [1,2,2,1] if flag == 'stride' else [1,1,1,1]
   hconv1 = tf.nn.conv2d(x, w, strides=strides, padding='VALID')
-  hconv1bias = tf.nn.bias_add(hconv1, b)
-  hconv1tan = tf.nn.tanh(hconv1bias)
   if flag == 'maxpool':
+    hconv1bias = tf.nn.bias_add(hconv1, b)
+    hconv1tan = tf.nn.tanh(hconv1bias)
     hconv1pool = tf.nn.max_pool(hconv1tan, ksize=[1,2,2,1], strides=[1,2,2,1], padding='VALID')
     return hconv1pool
   return hconv1
@@ -90,21 +88,21 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
   else:
     ux = tf.reshape(ux, [-1, boxheight, boxwidth, 8])
     wunary = tf.reshape(wunary, [8,])
-    h = tf.mul(ux, wunary)
+    h = tf.multiply(-tf.math.log(ux), wunary)
     h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-    hsum = tf.reduce_sum(h, reduction_indices=3)
+    hsum = tf.reduce_sum(h, axis=3)  # got phi unary for multi-scale FCN till now
     hconv4bias = tf.reshape(hsum, [-1,2])
-    hconv4soft = tf.nn.softmax(hconv4bias)
+    hconv4soft = tf.nn.softmax(-hconv4bias)
     hconv4clip = tf.clip_by_value(hconv4soft, 1e-6, 1.)
     q = (tf.reshape(hconv4clip, [-1, boxheight, boxwidth, 2]))
     #e_x = tf.exp(hsum - tf.reduce_max(hsum, reduction_indices=2, keep_dims=True))
   #q = e_x #/ (tf.clip_by_value(tf.reduce_sum(e_x, reduction_indices=2, keep_dims=True), 1e-6,1.))  # batchsize*(boxheight*boxwidth)*2
   k1 = tf.reshape(k1, [-1, boxheight*boxwidth, boxheight*boxwidth, 1])
-  k1 = tf.concat(3, [k1, k1])
+  k1 = tf.concat([k1, k1], 3)
   k2 = tf.reshape(k2, [-1, boxheight*boxwidth, boxheight*boxwidth, 1])
-  k2 = tf.concat(3, [k2, k2])
-  wsmooth = tf.diag(tf.squeeze(wsmooth))
-  wcontra = tf.diag(tf.squeeze(wcontra))
+  k2 = tf.concat([k2, k2], 3)
+  wsmooth = tf.linalg.diag(tf.squeeze(wsmooth))
+  wcontra = tf.linalg.diag(tf.squeeze(wcontra))
   #wsmoothaug = tf.reshape(wsmooth, [1,1,2])
   #wsmoothaug = tf.tile(wsmoothaug, [batchsize, boxheight*boxwidth, 1])
   #wcontraaug = tf.reshape(wcontra, [1,1,2])
@@ -112,8 +110,8 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
   for epoch in range(testiter):
     q = tf.reshape(q, [-1, boxheight*boxwidth, 1, 2]) 
     q = tf.tile(q, [1,1,boxheight*boxwidth,1])
-    q1 = tf.reduce_sum(tf.mul(k1, q), reduction_indices=2)  # for pairwise potential 1, batchsize*(boxheight*boxwidth)*2
-    q2 = tf.reduce_sum(tf.mul(k2, q), reduction_indices=2)  # for pairwise potential 2, batchsize*(boxheight*boxwidth)*2
+    q1 = tf.reduce_sum(tf.multiply(k1, q), axis=2)  # for pairwise potential 1, batchsize*(boxheight*boxwidth)*2
+    q2 = tf.reduce_sum(tf.multiply(k2, q), axis=2)  # for pairwise potential 2, batchsize*(boxheight*boxwidth)*2
     q1 = tf.reshape(q1, [-1,2])
     q2 = tf.reshape(q2, [-1,2])
     #qpre = tf.mul(wsmoothaug, q1) + tf.mul(wcontraaug, q2)
@@ -122,14 +120,14 @@ def crfrnn(ux, wsmooth, wcontra, k1, k2, trainiter=5, testiter=10, wunary=None):
     qhat = tf.matmul(qpre, tf.constant(np.array([[0,1],[1,0]]).astype('float32')))
     qhat = tf.reshape(qhat, [-1, boxheight, boxwidth, 2])
     if wunary is None:
-      qu = ux - qhat
+      qu = tf.math.log(ux)-qhat
     else:
       ux = tf.reshape(ux, [-1, boxheight, boxwidth,8])
       #wunary = tf.reshape(wunary, [8,])
-      h = tf.mul(ux, wunary)
+      h = tf.multiply(-tf.math.log(ux), wunary)
       h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-      hsum = tf.reduce_sum(h, reduction_indices=3)
-      qu = hsum - qhat
+      hsum = tf.reduce_sum(h, axis=3)  # got phi unary for multi-scale FCN till now
+      qu = -hsum - qhat
     #e_xx = tf.exp(qu - tf.reduce_max(qu, reduction_indices=2, keep_dims=True))
     #q = e_xx / (tf.clip_by_value(tf.reduce_sum(e_xx, reduction_indices=2, keep_dims=True), 1e-6, 1.))
     qubias = tf.reshape(qu, [-1,2])
@@ -164,72 +162,73 @@ def calfilter(X):
   return k1, k2
 
 def init(nhid1=6, nhid2=12, nhid3=588, lrf1=5, lrf2=5, lrf3=7):  #nhid1=6, nhid2=12, nhid3=588, lrf1=5, lrf2=5, lrf3=7
-  paras = {'wconv1': tf.Variable(tf.random_normal([lrf1, lrf1, 1, nhid1])),
-           'wconv2': tf.Variable(tf.random_normal([lrf2, lrf2, nhid1, nhid2])),
-           'wconv3': tf.Variable(tf.random_normal([lrf3, lrf3, nhid2, nhid3])),
-           'wconv4': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid3])),
-           'bconv1': tf.Variable(tf.random_normal([nhid1])),
-           'bconv2': tf.Variable(tf.random_normal([nhid2])),
-           'bconv3': tf.Variable(tf.random_normal([nhid3])),
-           'bconv4': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wsmooth': tf.Variable(tf.random_normal([2,1])),
-           'wcontra': tf.Variable(tf.random_normal([2,1]))}
+  paras = {'wconv1': tf.Variable(tf.random.normal([lrf1, lrf1, 1, nhid1])),
+           'wconv2': tf.Variable(tf.random.normal([lrf2, lrf2, nhid1, nhid2])),
+           'wconv3': tf.Variable(tf.random.normal([lrf3, lrf3, nhid2, nhid3])),
+           'wconv4': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid3])),
+           'bconv1': tf.Variable(tf.random.normal([nhid1])),
+           'bconv2': tf.Variable(tf.random.normal([nhid2])),
+           'bconv3': tf.Variable(tf.random.normal([nhid3])),
+           'bconv4': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wsmooth': tf.Variable(tf.random.normal([2,1])),
+           'wcontra': tf.Variable(tf.random.normal([2,1]))}
   return paras
 def initcomb(nhid221=37, nhid222=12, nhid223=355, lrf221=2, lrf222=2, lrf223=9,
       nhid331=16, nhid332=13, nhid333=415, lrf331=3, lrf332=3, lrf333=8,
       nhid441=9, nhid442=12, nhid443=588, lrf441=4, lrf442=4, lrf443=7,
       nhid551=6, nhid552=12, nhid553=588, lrf551=5, lrf552=5, lrf553=7, fusion=None):
-  paras = {'wconv221': tf.Variable(tf.random_normal([lrf221, lrf221, 1, nhid221])),
-           'wconv222': tf.Variable(tf.random_normal([lrf222, lrf222, nhid221, nhid222])),
-           'wconv223': tf.Variable(tf.random_normal([lrf223, lrf223, nhid222, nhid223])),
-           'wconv224': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid223])),
-           'bconv221': tf.Variable(tf.random_normal([nhid221])),
-           'bconv222': tf.Variable(tf.random_normal([nhid222])),
-           'bconv223': tf.Variable(tf.random_normal([nhid223])),
-           'bconv224': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wconv331': tf.Variable(tf.random_normal([lrf331, lrf331, 1, nhid331])),
-           'wconv332': tf.Variable(tf.random_normal([lrf332, lrf332, nhid331, nhid332])),
-           'wconv333': tf.Variable(tf.random_normal([lrf333, lrf333, nhid332, nhid333])),
-           'wconv334': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid333])),
-           'bconv331': tf.Variable(tf.random_normal([nhid331])),
-           'bconv332': tf.Variable(tf.random_normal([nhid332])),
-           'bconv333': tf.Variable(tf.random_normal([nhid333])),
-           'bconv334': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wconv441': tf.Variable(tf.random_normal([lrf441, lrf441, 1, nhid441])),
-           'wconv442': tf.Variable(tf.random_normal([lrf442, lrf442, nhid441, nhid442])),
-           'wconv443': tf.Variable(tf.random_normal([lrf443, lrf443, nhid442, nhid443])),
-           'wconv444': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid443])),
-           'bconv441': tf.Variable(tf.random_normal([nhid441])),
-           'bconv442': tf.Variable(tf.random_normal([nhid442])),
-           'bconv443': tf.Variable(tf.random_normal([nhid443])),
-           'bconv444': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wconv551': tf.Variable(tf.random_normal([lrf551, lrf551, 1, nhid551])),
-           'wconv552': tf.Variable(tf.random_normal([lrf552, lrf552, nhid551, nhid552])),
-           'wconv553': tf.Variable(tf.random_normal([lrf553, lrf553, nhid552, nhid553])),
-           'wconv554': tf.Variable(tf.random_normal([boxheight, boxwidth, 2, nhid553])),
-           'bconv551': tf.Variable(tf.random_normal([nhid551])),
-           'bconv552': tf.Variable(tf.random_normal([nhid552])),
-           'bconv553': tf.Variable(tf.random_normal([nhid553])),
-           'bconv554': tf.Variable(tf.random_normal([boxheight*boxwidth*2])),
-           'wunary': tf.Variable(tf.random_normal([4,2]))}
+  paras = {'wconv221': tf.Variable(tf.random.normal([lrf221, lrf221, 1, nhid221])),
+           'wconv222': tf.Variable(tf.random.normal([lrf222, lrf222, nhid221, nhid222])),
+           'wconv223': tf.Variable(tf.random.normal([lrf223, lrf223, nhid222, nhid223])),
+           'wconv224': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid223])),
+           'bconv221': tf.Variable(tf.random.normal([nhid221])),
+           'bconv222': tf.Variable(tf.random.normal([nhid222])),
+           'bconv223': tf.Variable(tf.random.normal([nhid223])),
+           'bconv224': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wconv331': tf.Variable(tf.random.normal([lrf331, lrf331, 1, nhid331])),
+           'wconv332': tf.Variable(tf.random.normal([lrf332, lrf332, nhid331, nhid332])),
+           'wconv333': tf.Variable(tf.random.normal([lrf333, lrf333, nhid332, nhid333])),
+           'wconv334': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid333])),
+           'bconv331': tf.Variable(tf.random.normal([nhid331])),
+           'bconv332': tf.Variable(tf.random.normal([nhid332])),
+           'bconv333': tf.Variable(tf.random.normal([nhid333])),
+           'bconv334': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wconv441': tf.Variable(tf.random.normal([lrf441, lrf441, 1, nhid441])),
+           'wconv442': tf.Variable(tf.random.normal([lrf442, lrf442, nhid441, nhid442])),
+           'wconv443': tf.Variable(tf.random.normal([lrf443, lrf443, nhid442, nhid443])),
+           'wconv444': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid443])),
+           'bconv441': tf.Variable(tf.random.normal([nhid441])),
+           'bconv442': tf.Variable(tf.random.normal([nhid442])),
+           'bconv443': tf.Variable(tf.random.normal([nhid443])),
+           'bconv444': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wconv551': tf.Variable(tf.random.normal([lrf551, lrf551, 1, nhid551])),
+           'wconv552': tf.Variable(tf.random.normal([lrf552, lrf552, nhid551, nhid552])),
+           'wconv553': tf.Variable(tf.random.normal([lrf553, lrf553, nhid552, nhid553])),
+           'wconv554': tf.Variable(tf.random.normal([boxheight, boxwidth, 2, nhid553])),
+           'bconv551': tf.Variable(tf.random.normal([nhid551])),
+           'bconv552': tf.Variable(tf.random.normal([nhid552])),
+           'bconv553': tf.Variable(tf.random.normal([nhid553])),
+           'bconv554': tf.Variable(tf.random.normal([boxheight*boxwidth*2])),
+           'wunary': tf.Variable(tf.random.normal([4,2]))}
   if fusion=='late':
-    paras['wsmooth22'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra22'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wsmooth33'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra33'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wsmooth44'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra44'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wsmooth55'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra55'] = tf.Variable(tf.random_normal([2,1]))
+    paras['wsmooth22'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra22'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wsmooth33'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra33'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wsmooth44'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra44'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wsmooth55'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra55'] = tf.Variable(tf.random.normal([2,1]))
   else:
-    paras['wsmooth'] = tf.Variable(tf.random_normal([2,1]))
-    paras['wcontra'] = tf.Variable(tf.random_normal([2,1]))
+    paras['wsmooth'] = tf.Variable(tf.random.normal([2,1]))
+    paras['wcontra'] = tf.Variable(tf.random.normal([2,1]))
   return paras
 
 def buildmodel(X, paras):
   hconv1 = convlayer(X, paras['wconv1'], paras['bconv1'], flag='maxpool')
   hconv2 = convlayer(hconv1, paras['wconv2'], paras['bconv2'], flag='maxpool')
   
+  # conv3 has no pooling, so it didn't use convlayer
   hconv3 = tf.nn.conv2d(hconv2, paras['wconv3'], strides=[1,1,1,1], padding='VALID')
   hconv3bias = tf.nn.bias_add(hconv3, paras['bconv3'])
   hconv3tan = tf.nn.tanh(hconv3bias)
@@ -249,27 +248,27 @@ def cnnmodel(X, Y, paras, flag='single'):
   assert(flag=='single' or flag=='combine')
   X = tf.reshape(X, shape=[-1, boxheight, boxwidth, 1])
   yreshape = tf.reshape(Y, [-1, boxheight, boxwidth, 1])
-  yonehot = tf.concat(3, [1-yreshape, yreshape])
+  yonehot = tf.concat([1-yreshape, yreshape], 3)  # (comment by Yan) Probably the prior, but not averaged among all images yet
   if flag == 'combine':
     hconv4clip = buildcombmodel(X, paras)
   else: hconv4clip = buildmodel(X, paras)
   #hconv4log = -tf.log(hconv4clip)
   #q_train, q_test = crfrnn(hconv4log, paras['wsmooth'], paras['wcontra'], k1, k2, trainiter=5, testiter=10)
   #q_train = tf.reshape(q_train, [-1, boxheight, boxwidth, 2])
-  q_train = -tf.log(hconv4clip)
-  trainenergy = tf.reduce_sum((q_train)*yonehot, reduction_indices=3)
+  q_train = -tf.math.log(hconv4clip)
+  trainenergy = tf.reduce_sum((q_train)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
-  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
+  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])  # (comment by Yan) Averaged to get the prior??
   q_test = hconv4clip
   #q_test = crfrnn(hconv4, paras['wsmooth'], paras['wcontra'], k1, k2, iter=5)
   q_test = tf.reshape(q_test, [-1, boxheight, boxwidth, 2])
-  testenergy = tf.reduce_sum(tf.mul(q_test, yonehot), reduction_indices=3)
+  testenergy = tf.reduce_sum(tf.multiply(q_test, yonehot), axis=3)
   #testenergy = tf.reduce_prod(testenergy, reduction_indices=[1,2])
   testenergy = tf.reduce_mean(testenergy, [0,1,2])
   predarg = tf.argmax(q_test, 3)
-  yint64 = tf.to_int64(Y)
+  yint64 = tf.cast(Y, tf.int64)
   acc = tf.equal(yint64, predarg)
-  acc = tf.to_float(acc)
+  acc = tf.cast(acc, tf.float32)
   accuracy = tf.reduce_mean(acc, [0,1,2])
   di = dice_tf(tf.reshape(yint64, [-1,]), tf.reshape(predarg, [-1,]))
   return trainenergy, accuracy, di, testenergy, q_test
@@ -278,7 +277,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
   assert(flag=='single' or flag=='combine')
   X = tf.reshape(X, shape=[-1, boxheight, boxwidth, 1])
   yreshape = tf.reshape(Y, [-1, boxheight, boxwidth, 1])
-  yonehot = tf.concat(3, [1-yreshape, yreshape])
+  yonehot = tf.concat([1-yreshape, yreshape], 3)    # (comment by Yan) Probably the prior, but not averaged among all images yet
   if flag == 'combine':
     hconv4clip = buildcombmodel(X, paras, fusion=False)
     if fusion=='late':
@@ -298,7 +297,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
       q_trainconc = tf.concat(3, [q_train22, q_train33, q_train44, q_train55])
       q_trainconc = tf.reshape(q_trainconc, [-1,boxheight,boxwidth,8])
       w_unary = tf.reshape(paras['wunary'], [8])
-      q_trainw = tf.mul(q_trainconc, w_unary)
+      q_trainw = tf.multiply(q_trainconc, w_unary)
       q_trainw = tf.reshape(q_trainw, [-1,boxheight,boxwidth,4,2])
       q_trainsum = tf.reduce_sum(q_trainw, 3)
       q_trainsum = tf.reshape(q_trainsum, [-1,2])
@@ -312,7 +311,7 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
       q_test55 = tf.reshape(q_test55, [-1,boxheight,boxwidth,1,2])
       q_testconc = tf.concat(3, [q_test22, q_test33, q_test44, q_test55])
       q_testconc = tf.reshape(q_testconc, [-1,boxheight,boxwidth,8])
-      q_testw = tf.mul(q_testconc, w_unary)
+      q_testw = tf.multiply(q_testconc, w_unary)
       q_testw = tf.reshape(q_testw, [-1,boxheight,boxwidth,4,2])
       q_testsum = tf.reduce_sum(q_testw, 3)
       q_testsum = tf.reshape(q_testsum, [-1,2])
@@ -322,28 +321,28 @@ def model(X, Y, k1, k2, paras, flag='single', fusion=None):
     else:
       q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
         trainiter=5, testiter=10, wunary=paras['wunary'])
-  else: 
-    hconv4clip = buildmodel(X, paras)
+  else:
+    hconv4clip = buildmodel(X, paras) # the result after softmax activation from CNN feature map. -log(hconv4clip) is required
     q_train, q_test = crfrnn(hconv4clip, paras['wsmooth'], paras['wcontra'], k1, k2, 
       trainiter=5, testiter=10)
   #hconv4log = -tf.log(hconv4clip)
   #q_train = tf.reshape(q_train, [-1, boxheight, boxwidth, 2])
   #q_train = -tf.log(hconv4clip)
   q_trainclip = tf.clip_by_value(q_train, 1e-6, 1.)
-  trainenergy = tf.reduce_sum(-tf.log(q_trainclip)*yonehot, reduction_indices=3)
+  trainenergy = tf.reduce_sum(-tf.math.log(q_trainclip)*yonehot, axis=3)
   #trainenergy = tf.reduce_prod(trainenergy, reduction_indices=[1,2])
-  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])
+  trainenergy = tf.reduce_mean(trainenergy, [0,1,2])   # (comment by Yan) Averaged to get the prior??
   
   #q_test = hconv4clip
   #q_test = crfrnn(hconv4, paras['wsmooth'], paras['wcontra'], k1, k2, iter=5)
   q_test = tf.reshape(q_test, [-1, boxheight, boxwidth, 2])
-  testenergy = tf.reduce_sum(tf.mul(q_test, yonehot), reduction_indices=3)
+  testenergy = tf.reduce_sum(tf.multiply(q_test, yonehot), axis=3)
   #testenergy = tf.reduce_prod(testenergy, reduction_indices=[1,2])
   testenergy = tf.reduce_mean(testenergy, [0,1,2])
   predarg = tf.argmax(q_test, 3)
-  yint64 = tf.to_int64(Y)
-  acc = tf.equal(yint64, predarg)
-  acc = tf.to_float(acc)
+  yint64 = tf.cast(Y, tf.int64)
+  acc = tf.math.equal(yint64, predarg)
+  acc = tf.cast(acc, tf.float32)
   accuracy = tf.reduce_mean(acc, [0,1,2])
   di = dice_tf(tf.reshape(yint64, [-1,]), tf.reshape(predarg, [-1,]))
   return trainenergy, accuracy, di, testenergy, q_test
@@ -352,8 +351,8 @@ def crfatmodel(X, Y, k1, k2, paras, epsilon, flag='single', fusion=None):
   assert(flag=='single' or flag=='combine')
   energy, accuracy, di, testenergy, qtest = model(X, Y, k1, k2, paras, flag, fusion=fusion)
   gradx = tf.stop_gradient(tf.gradients(energy, X, aggregation_method=2))
-  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), reduction_indices=[1,2], keep_dims=True))
-  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, reduction_indices=[1,2], keep_dims=True))
+  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), axis=[1,2], keepdims=True))
+  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, axis=[1,2], keepdims=True))
   radv = epsilon * gradx
   advenergy, _, _, _, _ = model(X+radv, Y, k1, k2, paras, flag)
   energy = energy + advenergy
@@ -363,8 +362,8 @@ def cnnatmodel(X, Y, paras, epsilon, flag='single'):
   assert(flag=='single' or flag=='combine')
   energy, accuracy, di, testenergy, qtest = cnnmodel(X, Y, paras, flag=flag)
   gradx = tf.stop_gradient(tf.gradients(energy, X, aggregation_method=2))
-  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), reduction_indices=[1,2], keep_dims=True))
-  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, reduction_indices=[1,2], keep_dims=True))
+  gradx = gradx / (1e-6 + tf.reduce_max(tf.abs(gradx), axis=[1,2], keepdims=True))
+  gradx = gradx / tf.sqrt(1e-12 + tf.reduce_sum(gradx**2, axis=[1,2], keepdims=True))
   radv = epsilon * gradx
   advenergy, _, _, _, _ = cnnmodel(X+radv, Y, paras, flag)
   energy = energy + advenergy
@@ -431,13 +430,13 @@ def buildcombmodel(X, paras, fusion=True):
   hconv554clip = tf.clip_by_value(hconv554soft, 1e-6, 1.)
   hconv554clip = (tf.reshape(hconv554clip, [-1, boxheight, boxwidth, 1, 2]))
 
-  hconc = tf.concat(3, [hconv224clip, hconv334clip, hconv444clip, hconv554clip])
+  hconc = tf.concat([hconv224clip, hconv334clip, hconv444clip, hconv554clip], 3)
   if fusion:
     hconc = tf.reshape(hconc, [-1, 8])
     wunary = tf.reshape(paras['wunary'], [8,])
     h = hconc * wunary
     h = tf.reshape(h, [-1, boxheight, boxwidth, 4, 2])
-    hsum = tf.reduce_sum(h, reduction_indices=3)
+    hsum = tf.reduce_sum(h, axis=3)
     hsum = tf.reshape(hsum, [-1,2])
     hsumsoft = tf.nn.softmax(hsum)
     hsumclip = tf.clip_by_value(hsumsoft, 1e-6, 1.)
